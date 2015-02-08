@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Code for analyzing zebrafish tracking csv output from Ctrax 
-For use from shell/command line
 
 Inputs: 
 Argument 1: File of the list of filenames to be analyzed (no extensions)
