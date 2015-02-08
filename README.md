@@ -1,2 +1,3 @@
 # Zebrafish
-Code for analyzing zebrafish data
+Contains code for analyzing zebrafish tracking data.
+
