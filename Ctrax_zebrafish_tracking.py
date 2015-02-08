@@ -21,7 +21,6 @@ jkenney9a@gmail.com
 
 import pandas as pd
 import pickle
-import sys
 import numpy as np
 
 pd.set_option('display.precision',5)
@@ -294,8 +293,9 @@ def analyze_file(files, file_type, output, mode):
             
     output_file.close()
     
-
-def main():
+if __name__ == "__main__":
+    
+    import sys
     
     files = sys.argv[1]    
     output = sys.argv[2]
@@ -310,11 +310,7 @@ def main():
         print "Not a supported file type."
         print "File must be a list of filenames in a .txt file or .csv output"
         print "from Ctrax."
-    
-    
-        
-#Run the program
-main()
+
 
     
     
