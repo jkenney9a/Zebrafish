@@ -5,15 +5,11 @@ Code for analyzing zebrafish csv output from Ctrax
 Inputs: 
 Argument 1: File of the list of filenames to be analyzed (no extensions)
 Argument 2: Filename of output list
-Argument 3: Mode and length (e.g., time=10 or fps=30)
+Argument 3: Mode and length (e.g., time=10 or fps=30). 
+            Note: time is in minutes
 
 Author: 
 Justin W. Kenney
-HFSP Long-term Fellow
-The Hospital for Sick Children
-Toronto, ON
-Canada
-
 jkenney9a@gmail.com
 
 """
