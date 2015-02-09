@@ -20,8 +20,9 @@ jkenney9a@gmail.com
 """
 
 import pandas as pd
-import pickle
+import pickle #To unpickle the coordinates out of the .ann file
 import numpy as np
+import glob #For use of wild cards in getting .ann files
 
 pd.set_option('display.precision',5)
 
@@ -225,7 +226,9 @@ def analyze_file(files, file_type, output, mode):
             for filename in files:
                 df = load_data(filename + ".csv")
                 df = combine_df(df)
-                t_b = get_top_and_bottom(filename + ".avi.ann")
+                #glob.glob returns a list; just need element of list.
+                #This allows for the use of other types of movies besides .avi
+                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann")[0])
                 df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'], 
                                                         trial_length)
                 df_out.to_csv(output_file, index_label=filename)
@@ -235,7 +238,7 @@ def analyze_file(files, file_type, output, mode):
         elif file_type == '.csv':
             df = load_data(files)
             df = combine_df(df)
-            ann_file = files.strip('.csv') + '.avi.ann'
+            ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0] 
             t_b = get_top_and_bottom(ann_file)
             df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'], 
                                                         trial_length)
@@ -261,7 +264,7 @@ def analyze_file(files, file_type, output, mode):
                 blank_line = pd.DataFrame(blanks, index = [1], 
                                           columns = range(int(trial_length)))
                 
-                t_b = get_top_and_bottom(filename + ".avi.ann")
+                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann"))[0]
                 
                 df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
                                                         fps, mode=mode_type)
@@ -281,7 +284,7 @@ def analyze_file(files, file_type, output, mode):
             blank_line = pd.DataFrame(blanks, index = [1], 
                                       columns = range(int(trial_length)))
             
-            ann_file = files.strip('.csv') + '.avi.ann'
+            ann_file = glob.glob(files.strip('.csv') + '.avi.ann')[0]
             t_b = get_top_and_bottom(ann_file)
             
             df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
