@@ -218,7 +218,8 @@ def analyze_file(files, file_type, output, mode):
                 df = combine_df(df)
                 #glob.glob returns a list; just need element of list.
                 #This allows for the use of other types of movies besides .avi
-                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann")[0])
+                ann_file = glob.glob(filename + ".*.ann")[0]              
+                t_b = get_top_and_bottom(ann_file)
                 df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'], 
                                                         trial_length)
                 df_out.to_csv(output_file, index_label=filename)
@@ -253,8 +254,8 @@ def analyze_file(files, file_type, output, mode):
                 blanks = int(trial_length + 1) * " "
                 blank_line = pd.DataFrame(blanks, index = [1], 
                                           columns = range(int(trial_length)))
-                
-                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann")[0])
+                ann_file = glob.glob(filename + ".*.ann")[0]
+                t_b = get_top_and_bottom(ann_file)
                 
                 df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
                                                         fps, mode=mode_type)
@@ -274,7 +275,7 @@ def analyze_file(files, file_type, output, mode):
             blank_line = pd.DataFrame(blanks, index = [1], 
                                       columns = range(int(trial_length)))
             
-            ann_file = glob.glob(files.strip('.csv') + '.avi.ann')[0]
+            ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0]
             t_b = get_top_and_bottom(ann_file)
             
             df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
