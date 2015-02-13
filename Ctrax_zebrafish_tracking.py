@@ -2,6 +2,10 @@
 """
 Code for analyzing zebrafish tracking csv output from Ctrax 
 
+Author: 
+Justin W. Kenney
+jkenney9a@gmail.com
+
 Inputs: 
 Argument 1: File of the list of filenames to be analyzed (no extensions)
             or a single csv file output from Ctrax.
@@ -12,17 +16,6 @@ Argument 3: Mode and length (e.g., time=10 or fps=30).
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
 by halves and by thirds.
-
-Author: 
-Justin W. Kenney
-jkenney9a@gmail.com
-
-Things to improve:
-Reduce redundancy in code overall. Increase functional modularity:
-1) Frame analysis
-2) Analyze files (create functions for analyzing seperately csv or txt files)
-
-This will make code more readable and easier to troubleshoot/alter down the road.
 
 """
 
@@ -190,8 +183,7 @@ def get_top_and_bottom(ann_file):
     output["right"] = max([roi[0][i][0] for i in range(len(roi[0]))])
         
     return output
-    
-    
+        
 
 def analyze_file(files, file_type, output, mode):
     """
