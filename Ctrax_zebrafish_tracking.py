@@ -17,10 +17,17 @@ Author:
 Justin W. Kenney
 jkenney9a@gmail.com
 
+Things to improve:
+Reduce redundancy in code overall. Increase functional modularity:
+1) Frame analysis
+2) Analyze files (create functions for analyzing seperately csv or txt files)
+
+This will make code more readable and easier to troubleshoot/alter down the road.
+
 """
 
 import pandas as pd
-import pickle #To unpickle the coordinates out of the .ann file
+import pickle #To unpickle the tank coordinates out of the .ann file
 import numpy as np
 import glob #For use of wild cards in getting .ann files
 
@@ -68,18 +75,25 @@ def combine_df(df):
         
     return pd.DataFrame(coordinates, columns = ['x','y'])
 
-def time_per_frame(df, trial_length):
+def analyze_frame_top_bottom(df, frame, half, one_third, two_thirds):
     """
-    Input: dataframe of Ctrax data and trial length in minutes
-
-    Output: time in ms of each frame
-    """
-        
-    secs = trial_length * 60
-    fps = len(df.index) / secs
+    Input: dataframe of tracking data
+    frame to be analyzed
+    coordinates for half, one_third and two_thirds of tank
     
-    return 1.0/fps
-
+    Output: list containing where in the tank the fish was in the frame
+    """
+    if df['y'][frame] >= half and df['y'][frame] >= two_thirds:
+        return ['top 1/2', 'top 1/3']
+    elif df['y'][frame] >= half and df['y'][frame] < two_thirds:
+        return ['top 1/2', 'middle 1/3']
+    elif df['y'][frame] < half and df['y'][frame] >= one_third:
+        return ['bottom 1/2', 'middle 1/3']
+    elif df['y'][frame] < half and df['y'][frame] < one_third:
+        return ['bottom 1/2', 'bottom 1/3']
+        
+    
+        
 def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
     """
     Input: dataframe of tracking data, 
@@ -113,18 +127,10 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
             Output = {x: 0 for x in Parameters}
            
             for frame in frames:
-                if df['y'][frame] >= half and df['y'][frame] >= two_thirds:
-                    Output['top 1/2'] += 1
-                    Output['top 1/3'] += 1
-                elif df['y'][frame] >= half and df['y'][frame] < two_thirds:
-                    Output['top 1/2'] += 1
-                    Output['middle 1/3'] += 1
-                elif df['y'][frame] < half and df['y'][frame] >= one_third:
-                    Output['bottom 1/2'] += 1
-                    Output['middle 1/3'] += 1
-                elif df['y'][frame] < half and df['y'][frame] < one_third:
-                    Output['bottom 1/2'] += 1
-                    Output['bottom 1/3'] += 1
+                whereabouts = analyze_frame_top_bottom(df, frame, half, 
+                                                       one_third, two_thirds)
+                for where in whereabouts:
+                    Output[where] += 1
             
             for x in Output.keys():
                 df_out[i + 1][x] = (Output[x]/ float(len(frames))) * 100
@@ -147,18 +153,10 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
             Output = {x: 0 for x in Parameters}
             
             for frame in frames:
-                if df['y'][frame] >= half and df['y'][frame] >= two_thirds:
-                    Output['top 1/2'] += 1
-                    Output['top 1/3'] += 1
-                elif df['y'][frame] >= half and df['y'][frame] < two_thirds:
-                    Output['top 1/2'] += 1
-                    Output['middle 1/3'] += 1
-                elif df['y'][frame] < half and df['y'][frame] >= one_third:
-                    Output['bottom 1/2'] += 1
-                    Output['middle 1/3'] += 1
-                elif df['y'][frame] < half and df['y'][frame] < one_third:
-                    Output['bottom 1/2'] += 1
-                    Output['bottom 1/3'] += 1
+                whereabouts = analyze_frame_top_bottom(df, frame, half, 
+                                                       one_third, two_thirds)
+                for where in whereabouts:
+                    Output[where] += 1
                     
             for x in Output.keys():
                 df_out[time_intervals[t+1]][x] = (np.float64(Output[x])/ len(frames)) * 100
@@ -264,7 +262,7 @@ def analyze_file(files, file_type, output, mode):
                 blank_line = pd.DataFrame(blanks, index = [1], 
                                           columns = range(int(trial_length)))
                 
-                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann"))[0]
+                t_b = get_top_and_bottom(glob.glob(filename + ".*.ann")[0])
                 
                 df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
                                                         fps, mode=mode_type)
