@@ -9,6 +9,7 @@ Assumes you only have one fish to track. If Ctrax has multiple tracks for the fi
 
 ##Requirements
 Python 2.7
+
 In the directory where you run the script you'll need:
 
 1) The CSV output from Ctrax 
