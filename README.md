@@ -8,6 +8,7 @@ Branson et al, High-throughput ethomics in large groups of Drosophila
 Assumes you only have one fish to track. If Ctrax has multiple tracks for the fish, the script will take the latest (most recent) track. This sometimes occurs when the fish moves too quickly and Ctrax interprets it as a new fish.
 
 ##Requirements
+Python 2.7
 In the directory where you run the script you'll need:
 
 1) The CSV output from Ctrax 
