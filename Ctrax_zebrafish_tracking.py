@@ -15,7 +15,8 @@ Argument 3: Mode and length (e.g., time=10 or fps=30).
 
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
-by halves and by thirds.
+by halves and by thirds. Also includes time spent freezing (default is 
+less than 2 pixels movement over 0.5 seconds)
 
 """
 
@@ -85,19 +86,38 @@ def analyze_frame_top_bottom(df, frame, half, one_third, two_thirds):
     elif df['y'][frame] < half and df['y'][frame] < one_third:
         return ['bottom 1/2', 'bottom 1/3']
         
+def analyze_freezing(df, frame, bin_size, tolerance=2):
+    """
+    Input: dataframe of tracking data, frame, and bin size and pixel tolerance
+    (i.e, difference in pixel movement over bins to be considered not freezing)
+    
+    Output: True (freezing) or False (not freezing)
+    """
+    
+    if (frame + bin_size) in df.index:
+        #Get all x-coordinates and their differences
+        x_list = df['x'][frame:frame+bin_size]
+        x_diffs = sum(abs(np.diff(x_list)))
+        if x_diffs <= tolerance:
+            return True
+        else:
+            return False
+           
+    
     
         
-def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
+def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode="time"):
     """
     Input: dataframe of tracking data, 
     top, bottom = coordinates for top and bottom of tank (in same space as tracking data) 
     trial = the time or fps (frames per second), e.g., 5 or 30
+    bin size for analyzing freezing data (in seconds)    
     mode = "time" or "fps"
     
     Output: df of time spent in various parts of tank broken down by minute
     """
     
-    Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3']    
+    Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 'freezing']    
     
     half = ((top - bottom) / 2) + bottom
     two_thirds = (2*(top - bottom) / 3) + bottom
@@ -110,6 +130,7 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
                               columns = range(1,trial_length + 1), dtype=float)
                               
         frames_per_min = int(len(df.index) / trial_length)
+        frames_per_bin = int((frames_per_min/60)*freeze_bin)
         
         #Find frames at each minute boundary    
         frame_index = [x*frames_per_min for x in range(0,trial_length + 1)]
@@ -117,6 +138,8 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
         for i in range(0,len(frame_index)-1):    
             #Stop trial at last index;
             frames = range(frame_index[i],frame_index[i+1])        
+            
+            #Initialize all parameters to zero
             Output = {x: 0 for x in Parameters}
            
             for frame in frames:
@@ -124,6 +147,9 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
                                                        one_third, two_thirds)
                 for where in whereabouts:
                     Output[where] += 1
+                
+                if analyze_freezing(df, frame, frames_per_bin):
+                    Output['freezing'] += 1
             
             for x in Output.keys():
                 df_out[i + 1][x] = (Output[x]/ float(len(frames))) * 100
@@ -131,6 +157,7 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
     elif mode.lower() == "fps":
         fps = trial
         fpm = fps*60
+        frames_per_bin = int(fps*freeze_bin)
         trial_length = float(len(df.index)) / fpm
         time_intervals = range(1,int(trial_length + 1))
        
@@ -143,6 +170,8 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
         
         for t in range(0,len(time_intervals)-1):
             frames = range(time_intervals[t] * int(fpm), int(time_intervals[t+1] * fpm))
+            
+            #Initialize all parameters to zero
             Output = {x: 0 for x in Parameters}
             
             for frame in frames:
@@ -150,11 +179,15 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, mode="time"):
                                                        one_third, two_thirds)
                 for where in whereabouts:
                     Output[where] += 1
+                
+                if analyze_freezing(df, frame, frames_per_bin):
+                    Output['freezing'] += 1
                     
             for x in Output.keys():
                 df_out[time_intervals[t+1]][x] = (np.float64(Output[x])/ len(frames)) * 100
     
     return df_out
+
 
 def get_top_and_bottom(ann_file):
     """
@@ -183,7 +216,7 @@ def get_top_and_bottom(ann_file):
     output["right"] = max([roi[0][i][0] for i in range(len(roi[0]))])
         
     return output
-        
+
 
 def analyze_file(files, file_type, output, mode):
     """
