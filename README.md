@@ -4,6 +4,8 @@ Ctrax (http://ctrax.sourceforge.net/):
 Branson et al, High-throughput ethomics in large groups of Drosophila 
 (2009). Nature Methods, (6) 451-457.
 
+Analyzes resulting CSV files for time fish spends in top/bottom half of tank, top/middle/bottom third of tank and for freezing (i.e, lack of movement in horizontal direction).
+
 ##Assumptions
 Assumes you only have one fish to track. If Ctrax has multiple tracks for the fish, the script will take the latest (most recent) track. This sometimes occurs when the fish moves too quickly and Ctrax interprets it as a new fish.
 
