@@ -95,10 +95,15 @@ def analyze_freezing(df, frame, bin_size, tolerance=2):
     """
     
     if (frame + bin_size) in df.index:
-        #Get all x-coordinates and their differences
-        x_list = df['x'][frame:frame+bin_size]
+        #Get all x and y-coordinates and their differences
+        x_list = df['x'][frame:frame + bin_size]
         x_diffs = sum(abs(np.diff(x_list)))
-        if x_diffs <= tolerance:
+        y_list = df['y'][frame:frame + bin_size]
+        y_diffs = sum(abs(np.diff(y_list)))
+        
+        #Determine distance moved in both axes:
+        distance = np.sqrt(x_diffs**2 + y_diffs**2)
+        if distance <= tolerance:
             return True
         else:
             return False
