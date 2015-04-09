@@ -16,7 +16,8 @@ Argument 3: Mode and length (e.g., time=10 or fps=30).
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
 by halves and by thirds. Also includes time spent freezing (default is 
-less than 2 pixels movement over 0.5 seconds)
+less than 2 pixels movement over 0.5 seconds) and average distance fish is from
+the bottom of the tank at each minute.
 
 """
 
@@ -69,14 +70,21 @@ def combine_df(df):
         
     return pd.DataFrame(coordinates, columns = ['x','y'])
 
-def analyze_frame_top_bottom(df, frame, half, one_third, two_thirds):
+def analyze_frame_top_bottom(df, frame, top, bottom):
     """
     Input: dataframe of tracking data
     frame to be analyzed
-    coordinates for half, one_third and two_thirds of tank
+    top and bottom coordinates of tank
     
-    Output: list containing where in the tank the fish was in the frame
+    Output: list containing where in the tank the fish was in the frame and 
+    distance from bottom of the tank
     """
+    
+    #Calculate cutoffs for each part of the tank
+    half = ((top - bottom) / 2) + bottom
+    two_thirds = (2*(top - bottom) / 3) + bottom
+    one_third = ((top - bottom)/ 3) + bottom
+    
     if df['y'][frame] >= half and df['y'][frame] >= two_thirds:
         return ['top 1/2', 'top 1/3']
     elif df['y'][frame] >= half and df['y'][frame] < two_thirds:
@@ -85,6 +93,17 @@ def analyze_frame_top_bottom(df, frame, half, one_third, two_thirds):
         return ['bottom 1/2', 'middle 1/3']
     elif df['y'][frame] < half and df['y'][frame] < one_third:
         return ['bottom 1/2', 'bottom 1/3']
+
+def distance_from_bottom(df, frame, bottom):
+    """
+    Input: dataframe of tracking data, frame to be analyze, coordinates for the
+    bottom of the tank
+    
+    Output: distance the object is from the bottom-most coordinate of the tank
+    """
+    dist = df['y'][frame] - bottom
+    return dist
+    
         
 def analyze_freezing(df, frame, bin_size, tolerance=2):
     """
@@ -109,7 +128,6 @@ def analyze_freezing(df, frame, bin_size, tolerance=2):
             return False
            
     
-    
         
 def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode="time"):
     """
@@ -119,15 +137,14 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode=
     bin size for analyzing freezing data (in seconds)    
     mode = "time" or "fps"
     
-    Output: df of time spent in various parts of tank broken down by minute
+    Output: df of time spent in various parts of tank, % time freezing and 
+    average distance from bottom of tank broken down by minute.
     """
     
-    Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 'freezing']    
+    Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 
+                  'distance from bottom', 'freezing']    
     
-    half = ((top - bottom) / 2) + bottom
-    two_thirds = (2*(top - bottom) / 3) + bottom
-    one_third = ((top - bottom)/ 3) + bottom
-    
+     
     if mode.lower() == "time":
         trial_length = trial
     
@@ -148,13 +165,14 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode=
             Output = {x: 0 for x in Parameters}
            
             for frame in frames:
-                whereabouts = analyze_frame_top_bottom(df, frame, half, 
-                                                       one_third, two_thirds)
+                whereabouts = analyze_frame_top_bottom(df, frame, top, bottom)
                 for where in whereabouts:
                     Output[where] += 1
                 
                 if analyze_freezing(df, frame, frames_per_bin):
                     Output['freezing'] += 1
+                
+                Output['distance from bottom'] += distance_from_bottom(df, frame, bottom)
             
             for x in Output.keys():
                 df_out[i + 1][x] = (Output[x]/ float(len(frames))) * 100
@@ -180,16 +198,21 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode=
             Output = {x: 0 for x in Parameters}
             
             for frame in frames:
-                whereabouts = analyze_frame_top_bottom(df, frame, half, 
-                                                       one_third, two_thirds)
+                whereabouts = analyze_frame_top_bottom(df, frame, top, bottom)
+                
                 for where in whereabouts:
                     Output[where] += 1
                 
                 if analyze_freezing(df, frame, frames_per_bin):
                     Output['freezing'] += 1
+                
+                Output['distance from bottom'] += distance_from_bottom(df, frame, bottom)
                     
             for x in Output.keys():
-                df_out[time_intervals[t+1]][x] = (np.float64(Output[x])/ len(frames)) * 100
+                df_out[time_intervals[t+1]][x] = (np.float64(Output[x]) / len(frames)) * 100
+    
+    #Correct for the fact that distance from bottom is not a percent like other measures
+    df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] / 100
     
     return df_out
 
@@ -221,7 +244,7 @@ def get_top_and_bottom(ann_file):
     output["right"] = max([roi[0][i][0] for i in range(len(roi[0]))])
         
     return output
-
+    
 
 def analyze_file(files, file_type, output, mode):
     """
