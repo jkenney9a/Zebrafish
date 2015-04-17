@@ -101,6 +101,7 @@ def distance_from_bottom(df, frame, bottom):
     
     Output: distance the object is from the bottom-most coordinate of the tank
     """
+    
     dist = df['y'][frame] - bottom
     return dist
     
@@ -129,13 +130,16 @@ def analyze_freezing(df, frame, bin_size, tolerance=2):
            
     
         
-def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode="time"):
+def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5, 
+                                   mode="time", use_real_dist=False, real_len=["x",0]):
     """
     Input: dataframe of tracking data, 
     top, bottom = coordinates for top and bottom of tank (in same space as tracking data) 
     trial = the time or fps (frames per second), e.g., 5 or 30
     bin size for analyzing freezing data (in seconds)    
     mode = "time" or "fps"
+    whether to convert to real distances (instead of "pixel" distances)
+    the real length to use for calibration as list ([dimension, length])
     
     Output: df of time spent in various parts of tank, % time freezing and 
     average distance from bottom of tank broken down by minute.
@@ -144,6 +148,10 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode=
     Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 
                   'distance from bottom', 'freezing']    
     
+    top = tank_coordinates['top']
+    bottom = tank_coordinates['bottom']
+    left = tank_coordinates['left']
+    right = tank_coordinates['right']
      
     if mode.lower() == "time":
         trial_length = trial
@@ -213,7 +221,17 @@ def min_by_min_top_bottom_analysis(df, top, bottom, trial, freeze_bin=0.5, mode=
     
     #Correct for the fact that distance from bottom is not a percent like other measures
     df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] / 100
+
+    if use_real_dist:
+        if real_len[0].lower() == "x":
+            pix_con = float(real_len[1]) / abs(right - left)
+            df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] * pix_con
+        
+        elif real_len[0].lower() == "y":
+            pix_con = float(real_len[1]) / abs(top - bottom)
+            df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] * pix_con
     
+     
     return df_out
 
 
@@ -244,9 +262,18 @@ def get_top_and_bottom(ann_file):
     output["right"] = max([roi[0][i][0] for i in range(len(roi[0]))])
         
     return output
-    
 
-def analyze_file(files, file_type, output, mode):
+def pixel_to_length(pixel_length, real_length):
+    """
+    Input: A length in pixels and a corresponding real length
+    
+    Output: The physical size of a pixel length in the same units as the real length
+    """
+    
+    return (float(real_length)/pixel_length)
+
+
+def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
     """
     Analyzes files
     
@@ -281,8 +308,9 @@ def analyze_file(files, file_type, output, mode):
                 #This allows for the use of other types of movies besides .avi
                 ann_file = glob.glob(filename + ".*.ann")[0]              
                 t_b = get_top_and_bottom(ann_file)
-                df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'], 
-                                                        trial_length)
+                df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length, 
+                                                        use_real_dist=use_real_dist, 
+                                                        real_len=real_len)
                 df_out.to_csv(output_file, index_label=filename)
                 blank_line.to_csv(output_file, index=False, header=False)
                 print filename + " is done!"
@@ -292,8 +320,9 @@ def analyze_file(files, file_type, output, mode):
             df = combine_df(df)
             ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0] 
             t_b = get_top_and_bottom(ann_file)
-            df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'], 
-                                                        trial_length)
+            df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length, 
+                                                    use_real_dist=use_real_dist,
+                                                    real_len=real_len)
             df_out.to_csv(output_file, index_label=files)
             blank_line.to_csv(output_file, index=False, header=False)
             print files + " is done!"
@@ -318,8 +347,9 @@ def analyze_file(files, file_type, output, mode):
                 ann_file = glob.glob(filename + ".*.ann")[0]
                 t_b = get_top_and_bottom(ann_file)
                 
-                df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
-                                                        fps, mode=mode_type)
+                df_out = min_by_min_top_bottom_analysis(df, t_b, fps, mode=mode_type,
+                                                        use_real_dist=use_real_dist, 
+                                                        real_len=real_len)
                 df_out.to_csv(output_file, index_label=filename)
                 blank_line.to_csv(output_file, index=False, header=False)
                 print filename + " is done!"
@@ -339,8 +369,9 @@ def analyze_file(files, file_type, output, mode):
             ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0]
             t_b = get_top_and_bottom(ann_file)
             
-            df_out = min_by_min_top_bottom_analysis(df, t_b['top'], t_b['bottom'],
-                                                    fps, mode=mode_type)
+            df_out = min_by_min_top_bottom_analysis(df, t_b, fps, mode=mode_type,
+                                                    use_real_dist=use_real_dist, 
+                                                    real_len=real_len)
             df_out.to_csv(output_file, index_label=files)
             blank_line.to_csv(output_file, index=False, header=False)
             print files + " is done!"
@@ -352,14 +383,35 @@ if __name__ == "__main__":
     
     import sys
     
-    files = sys.argv[1]    
-    output = sys.argv[2]
-    mode = sys.argv[3]
+    use_real_dist = False
+    real_len = ["x", 0] #Initizliae whether or not to use real distances for calculations
+    
+    for arg in sys.argv[1:]:
+        try:
+            name, value = arg.split('=', 1)
+            
+        except:
+            print "Error parsing command line argument. No '=' found"
+        
+        if name.lower() == "--input":
+            files = value
+            file_type = files.split('.')[1]
+        
+        elif name.lower() == "--output":
+            output = value
+        
+        elif name.lower() == "--time" or name.lower() == "--fps":
+            mode = name.split("--")[1] + "=" + str(value)
+        
+        elif name.lower() == "--x" or name.lower() == "--y":
+            real_len = [name.split("--")[1], float(value)]
+            use_real_dist = True
+            
     
     file_type = files[files.find('.'):].lower()
     
-    if file_type == ".txt" or file_type == ".csv":
-        analyze_file(files, file_type, output, mode)
+    if file_type.lower() == ".txt" or file_type.lower() == ".csv":
+        analyze_file(files, file_type, output, mode, use_real_dist, real_len)
     
     else:
         print "Not a supported file type."
