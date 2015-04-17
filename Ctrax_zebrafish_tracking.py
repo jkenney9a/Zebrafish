@@ -22,7 +22,7 @@ the bottom of the tank at each minute (can be in real or arbitrary distance unit
 
 import pandas as pd #Use dataframes to organize data
 import pickle #To unpickle the tank coordinates out of the .ann file
-import numpy as np #A little math here and there
+import numpy as np
 import glob #For use of wild cards in getting .ann files
 
 pd.set_option('display.precision',5)
@@ -405,7 +405,6 @@ if __name__ == "__main__":
         elif name.lower() == "--x" or name.lower() == "--y":
             real_len = [name.split("--")[1], float(value)]
             use_real_dist = True
-            S
     
     file_type = files[files.find('.'):].lower()
     
