@@ -6,24 +6,23 @@ Author:
 Justin W. Kenney
 jkenney9a@gmail.com
 
-Inputs: 
-Argument 1: File of the list of filenames to be analyzed (no extensions)
-            or a single csv file output from Ctrax.
-Argument 2: Filename of output CSV file
-Argument 3: Mode and length (e.g., time=10 or fps=30). 
-            Note: time is in minutes, fps = frames per second of video
+Parameters: 
+--Input=<input file name>
+--Output=<output file name>
+--time= OR fps= the time length of trial or the fps of the video analyzed
+--x= OR --y= the maximum x or y length in the .ann ROI
 
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
 by halves and by thirds. Also includes time spent freezing (default is 
 less than 2 pixels movement over 0.5 seconds) and average distance fish is from
-the bottom of the tank at each minute.
+the bottom of the tank at each minute (can be in real or arbitrary distance units).
 
 """
 
-import pandas as pd
+import pandas as pd #Use dataframes to organize data
 import pickle #To unpickle the tank coordinates out of the .ann file
-import numpy as np
+import numpy as np #A little math here and there
 import glob #For use of wild cards in getting .ann files
 
 pd.set_option('display.precision',5)
@@ -406,7 +405,7 @@ if __name__ == "__main__":
         elif name.lower() == "--x" or name.lower() == "--y":
             real_len = [name.split("--")[1], float(value)]
             use_real_dist = True
-            
+            S
     
     file_type = files[files.find('.'):].lower()
     
