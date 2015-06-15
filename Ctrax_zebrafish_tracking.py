@@ -69,14 +69,31 @@ def combine_df(df):
         
     return pd.DataFrame(coordinates, columns = ['x','y'])
 
+def analyze_frame_left_right(df, frame, left, right):
+    """
+    Input: dataframe of tracking data
+    frame to be analyzed
+    right and left coordinates of tank
+    
+    Output: list containing wherein the tank the fish was (right/left)
+    """
+    
+    #Calculate cutoffs for left/right of tank
+    half = ((right - left) / 2) + left
+    
+    if df['x'][frame] <= half:
+        return ['left 1/2']
+    else:
+        return ['right 1/2']
+
+
 def analyze_frame_top_bottom(df, frame, top, bottom):
     """
     Input: dataframe of tracking data
     frame to be analyzed
     top and bottom coordinates of tank
     
-    Output: list containing where in the tank the fish was in the frame and 
-    distance from bottom of the tank
+    Output: list containing where in the tank the fish was
     """
     
     #Calculate cutoffs for each part of the tank
@@ -145,7 +162,7 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
     """
     
     Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 
-                  'distance from bottom', 'freezing']    
+                  'distance from bottom', 'freezing', 'left 1/2', 'right 1/2']    
     
     top = tank_coordinates['top']
     bottom = tank_coordinates['bottom']
@@ -172,13 +189,18 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
             Output = {x: 0 for x in Parameters}
            
             for frame in frames:
+                #Find fish top/bottom
                 whereabouts = analyze_frame_top_bottom(df, frame, top, bottom)
+                for where in whereabouts:
+                    Output[where] += 1
+                #Find fish left/right
+                whereabouts = analyze_frame_left_right(df, frame, left, right)
                 for where in whereabouts:
                     Output[where] += 1
                 
                 if analyze_freezing(df, frame, frames_per_bin):
                     Output['freezing'] += 1
-                
+                    
                 Output['distance from bottom'] += distance_from_bottom(df, frame, bottom)
             
             for x in Output.keys():
@@ -206,7 +228,10 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
             
             for frame in frames:
                 whereabouts = analyze_frame_top_bottom(df, frame, top, bottom)
+                for where in whereabouts:
+                    Output[where] += 1
                 
+                whereabouts = analyze_frame_left_right(df, frame, left, right)
                 for where in whereabouts:
                     Output[where] += 1
                 
