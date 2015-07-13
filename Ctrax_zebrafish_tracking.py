@@ -122,52 +122,85 @@ def distance_from_bottom(df, frame, bottom):
     return dist
     
         
-def analyze_freezing(df, frame, bin_size, tolerance=2):
+def analyze_freezing(df, frame, bin_size, tolerance=2, pix_con = 0):
     """
-    Input: dataframe of tracking data, frame, and bin size and pixel tolerance
+    Input: dataframe of tracking data, frame, and bin size and tolerance
     (i.e, difference in pixel movement over bins to be considered not freezing)
+    If a conversion factor (pix_to_real) is given, tolerance is calculated based
+    on real distances, otherwise it's calculated based on pixels
     
     Output: True (freezing) or False (not freezing)
     """
     
-    if (frame + bin_size) in df.index:
+    d = distance_travelled(df, frame, bin_size = bin_size)
+    
+    if pix_con != 0:
+        d = d*pix_con
+    
+    if d < tolerance:
+        return True
+    else:
+        return False
+
+def distance_travelled(df, frame, bin_size = 1):
+    """
+    Input: Dataframe of tracking data, frame, and bin size (default = 1 frame)
+    
+    Output: Distance travelled in pixel distance.
+    """
+    
+    if (frame + bin_size + 1) in df.index:
         #Get all x and y-coordinates and their differences
-        x_list = df['x'][frame:frame + bin_size]
+        x_list = df['x'][frame:frame + bin_size + 1]
         x_diffs = sum(abs(np.diff(x_list)))
-        y_list = df['y'][frame:frame + bin_size]
+        y_list = df['y'][frame:frame + bin_size + 1]
         y_diffs = sum(abs(np.diff(y_list)))
         
-        #Determine distance moved in both axes:
-        distance = np.sqrt(x_diffs**2 + y_diffs**2)
-        if distance <= tolerance:
-            return True
-        else:
-            return False
-           
+        d = np.sqrt(x_diffs**2 + y_diffs**2)
+    
+        return d
+    else:
+        return 0
     
         
 def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5, 
-                                   mode="time", use_real_dist=False, real_len=["x",0]):
+                                   freeze_tolerance = 2, mode="time", 
+                                   use_real_dist=False, real_len=["x",0]):
     """
     Input: dataframe of tracking data, 
     top, bottom = coordinates for top and bottom of tank (in same space as tracking data) 
     trial = the time or fps (frames per second), e.g., 5 or 30
-    bin size for analyzing freezing data (in seconds)    
+    bin size for analyzing freezing data (in seconds) 
+    tolerance level for freezing calculation (in pixels or real dist depending on real_dist input)
     mode = "time" or "fps"
     whether to convert to real distances (instead of "pixel" distances)
     the real length to use for calibration as list ([dimension, length])
     
-    Output: df of time spent in various parts of tank, % time freezing and 
-    average distance from bottom of tank broken down by minute.
+    Output: df of time spent in various parts of tank, % time freezing, 
+    average distance from bottom of tank, avg distance travelled all
+    broken down by minute.
     """
     
     Parameters = ['top 1/2', 'bottom 1/2', 'top 1/3', 'middle 1/3', 'bottom 1/3', 
-                  'distance from bottom', 'freezing', 'left 1/2', 'right 1/2']    
+                  'distance from bottom', 'freezing', 'left 1/2', 'right 1/2',
+                  'distance travelled']    
     
     top = tank_coordinates['top']
     bottom = tank_coordinates['bottom']
     left = tank_coordinates['left']
     right = tank_coordinates['right']
+    
+    #Calculate conversion factor to take pixels to real lengths
+    if use_real_dist:
+        if real_len[0].lower() == "x":
+            pix_con = float(real_len[1]) / abs(right - left)
+        elif real_len[0].lower() == "y":
+            pix_con = float(real_len[1]) / abs(top - bottom)
+        else:
+            print "WARNING. Invalid distance measure entered. Must be 'x' or 'y'"
+    else:
+        pix_con = 0
+        
      
     if mode.lower() == "time":
         trial_length = trial
@@ -198,13 +231,20 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
                 for where in whereabouts:
                     Output[where] += 1
                 
-                if analyze_freezing(df, frame, frames_per_bin):
+                if analyze_freezing(df, frame, bin_size = frames_per_bin, 
+                                    tolerance = freeze_tolerance, 
+                                    pix_con = pix_con):
                     Output['freezing'] += 1
                     
                 Output['distance from bottom'] += distance_from_bottom(df, frame, bottom)
+                
+                Output['distance travelled'] += distance_travelled(df, frame)
             
             for x in Output.keys():
-                df_out[i + 1][x] = (Output[x]/ float(len(frames))) * 100
+                if x != 'distance travelled': #Don't want avg dist. travelled!
+                    df_out[i + 1][x] = (Output[x]/ float(len(frames))) * 100
+                else:
+                    df_out[i + 1][x] = np.float64(Output[x])
                    
     elif mode.lower() == "fps":
         fps = trial
@@ -215,7 +255,7 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
        
         #Add on any partial minute time at end of trial
         time_intervals.append(int(trial_length) + ((trial_length % 1) * 60/100.0))
-        df_out = pd.DataFrame(index = Parameters, columns = time_intervals)
+        df_out = pd.DataFrame(index = Parameters, columns = time_intervals, dtype = float)
         
         #Add 0 to beginning of time intervals to prevent index out of range errors
         time_intervals.insert(0,0)
@@ -235,25 +275,27 @@ def min_by_min_top_bottom_analysis(df, tank_coordinates, trial, freeze_bin=0.5,
                 for where in whereabouts:
                     Output[where] += 1
                 
-                if analyze_freezing(df, frame, frames_per_bin):
+                if analyze_freezing(df, frame, bin_size = frames_per_bin,
+                                    tolerance = freeze_tolerance,
+                                    pix_con = pix_con):
                     Output['freezing'] += 1
                 
                 Output['distance from bottom'] += distance_from_bottom(df, frame, bottom)
+                
+                Output['distance travelled'] += distance_travelled(df, frame)
                     
             for x in Output.keys():
-                df_out[time_intervals[t+1]][x] = (np.float64(Output[x]) / len(frames)) * 100
+                if x != "distance travelled": #Don't want avg dist. travelled!
+                    df_out[time_intervals[t+1]][x] = (float(Output[x]) / len(frames)) * 100
+                else:
+                    df_out[time_intervals[t+1]][x] = float(Output[x])
     
-    #Correct for the fact that distance from bottom is not a percent like other measures
+    #Correct for the fact that distance measures are not perecents like others
     df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] / 100
 
     if use_real_dist:
-        if real_len[0].lower() == "x":
-            pix_con = float(real_len[1]) / abs(right - left)
-            df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] * pix_con
-        
-        elif real_len[0].lower() == "y":
-            pix_con = float(real_len[1]) / abs(top - bottom)
-            df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] * pix_con
+        df_out.ix["distance from bottom"] = df_out.ix["distance from bottom"] * pix_con
+        df_out.ix["distance travelled"] = df_out.ix["distance travelled"] * pix_con
     
      
     return df_out
@@ -297,12 +339,15 @@ def pixel_to_length(pixel_length, real_length):
     return (float(real_length)/pixel_length)
 
 
-def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
+def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
+                 freeze_bin = 0.5, freeze_tolerance = 2):
     """
     Analyzes files
     
     Input: list of filenames, file_type = .txt or .csv, output file name,
-    mode ("time=xx" or "fps=xx"), 
+    mode ("time=xx" or "fps=xx"), whether to use real distance and the associated
+    length (use_real_dist and real_len), bin size (sec) and tolerance to use for
+    freezing calculations
     
     Output: None, writes data to the output file
     """
@@ -332,7 +377,10 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
                 #This allows for the use of other types of movies besides .avi
                 ann_file = glob.glob(filename + ".*.ann")[0]              
                 t_b = get_top_and_bottom(ann_file)
-                df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length, 
+                df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length,
+                                                        freeze_bin=freeze_bin,
+                                                        freeze_tolerance=freeze_tolerance,
+                                                        mode = mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
                 df_out.to_csv(output_file, index_label=filename)
@@ -344,9 +392,12 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
             df = combine_df(df)
             ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0] 
             t_b = get_top_and_bottom(ann_file)
-            df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length, 
-                                                    use_real_dist=use_real_dist,
-                                                    real_len=real_len)
+            df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length,
+                                                        freeze_bin=freeze_bin,
+                                                        freeze_tolerance=freeze_tolerance,
+                                                        mode=mode_type,
+                                                        use_real_dist=use_real_dist, 
+                                                        real_len=real_len)
             df_out.to_csv(output_file, index_label=files)
             blank_line.to_csv(output_file, index=False, header=False)
             print files + " is done!"
@@ -360,7 +411,7 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
                 df = combine_df(df)
                 fps = float(mode[mode.find('=')+1:])
                 fpm = fps*60 #Calculate frames per minute
-                trial_length = len(df.index)/float(fpm)
+                trial_length = float(len(df.index)/float(fpm))
                 
                 #Add blank lines to output CSV to make it look pretty
                 #Need to put it in the loop this time b/c of variable video lengths 
@@ -371,7 +422,10 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
                 ann_file = glob.glob(filename + ".*.ann")[0]
                 t_b = get_top_and_bottom(ann_file)
                 
-                df_out = min_by_min_top_bottom_analysis(df, t_b, fps, mode=mode_type,
+                df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length,
+                                                        freeze_bin=freeze_bin,
+                                                        freeze_tolerance=freeze_tolerance,
+                                                        mode=mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
                 df_out.to_csv(output_file, index_label=filename)
@@ -383,7 +437,7 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
             df = combine_df(df)
             fps = float(mode[mode.find('=')+1:])
             fpm = fps*60 #Calculate frames per minute
-            trial_length = len(df.index)/float(fpm)
+            trial_length = float(len(df.index)/float(fpm))
             
             #Add blank lines to output CSV to make it look pretty
             blanks = int(trial_length + 1) * " "
@@ -393,9 +447,12 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len):
             ann_file = glob.glob(files.strip('.csv') + '.*.ann')[0]
             t_b = get_top_and_bottom(ann_file)
             
-            df_out = min_by_min_top_bottom_analysis(df, t_b, fps, mode=mode_type,
-                                                    use_real_dist=use_real_dist, 
-                                                    real_len=real_len)
+            df_out = min_by_min_top_bottom_analysis(df, t_b, trial=trial_length,
+                                                        freeze_bin=freeze_bin,
+                                                        freeze_tolerance=freeze_tolerance,
+                                                        mode=mode_type,
+                                                        use_real_dist=use_real_dist, 
+                                                        real_len=real_len)
             df_out.to_csv(output_file, index_label=files)
             blank_line.to_csv(output_file, index=False, header=False)
             print files + " is done!"
@@ -407,8 +464,11 @@ if __name__ == "__main__":
     
     import sys
     
+    #Default values
     use_real_dist = False
     real_len = ["x", 0] #Initizliae whether or not to use real distances for calculations
+    fbin=0.5
+    ftol=2.0
     
     for arg in sys.argv[1:]:
         try:
@@ -430,11 +490,18 @@ if __name__ == "__main__":
         elif name.lower() == "--x" or name.lower() == "--y":
             real_len = [name.split("--")[1], float(value)]
             use_real_dist = True
+        
+        elif name.lower() == "--fbin":
+            fbin = float(value)
+        
+        elif name.lower() == "--ftolerance" or name.lower() == "--ftol":
+            ftol = float(value)
     
     file_type = files[files.find('.'):].lower()
     
     if file_type.lower() == ".txt" or file_type.lower() == ".csv":
-        analyze_file(files, file_type, output, mode, use_real_dist, real_len)
+        analyze_file(files, file_type, output, mode, use_real_dist, real_len,
+                     freeze_bin = fbin, freeze_tolerance = ftol)
     
     else:
         print "Not a supported file type."
