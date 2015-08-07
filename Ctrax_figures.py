@@ -24,14 +24,19 @@ def path_figure(df, output_name, output_type, top, bottom, left, right,
     
     Output: Write to file file_name.file_type of the figure
     """
-
+    
     title = output_name.split('.')[0]
+    
+    if abs(right - left) > (top - bottom):
+        lims = [left, right]
+    else:
+        lims = [bottom, top]
     
     p = ggplot(aes(x='x', y='y'), data=df) +\
     geom_path() +\
     ggtitle(title) +\
     xlab('') + ylab('') +\
-    xlim(left, right) + ylim(bottom, top) +\
+    xlim(min(lims), max(lims)) + ylim(min(lims), max(lims)) +\
     theme_bw()
     
     if boundary:
