@@ -11,12 +11,15 @@ Parameters:
 --Output=<output file name>
 --time= OR fps= the time length of trial or the fps of the video analyzed
 --x= OR --y= the maximum x or y length in the .ann ROI
+--long= whether or not to output data as a long format
+--measure= the measure to use for long format output (default is distance travelled)
 
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
 by halves and by thirds. Also includes time spent freezing (default is 
 less than 2 pixels movement over 0.5 seconds) and average distance fish is from
-the bottom of the tank at each minute (can be in real or arbitrary distance units).
+the bottom of the tank and the distance travelled at each minute 
+(can be in real or arbitrary distance units).
 
 """
 
@@ -340,7 +343,8 @@ def pixel_to_length(pixel_length, real_length):
 
 
 def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
-                 freeze_bin = 0.5, freeze_tolerance = 2):
+                 freeze_bin = 0.5, freeze_tolerance = 2, long_format=False,
+                 measure='distance travelled'):
     """
     Analyzes files
     
@@ -383,8 +387,14 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                                                         mode = mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
-                df_out.to_csv(output_file, index_label=filename)
-                blank_line.to_csv(output_file, index=False, header=False)
+                
+                if long_format:
+                    df_out = convert_to_long_format(df_out, filename, measure)
+                    df_out.to_csv(output_file, header=False)
+                else:
+                    df_out.to_csv(output_file, index_label=filename)
+                    blank_line.to_csv(output_file, index=False, header=False)
+                
                 print filename + " is done!"
         
         elif file_type == '.csv':
@@ -398,8 +408,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                                                         mode=mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
-            df_out.to_csv(output_file, index_label=files)
-            blank_line.to_csv(output_file, index=False, header=False)
+            if long_format:
+                df_out = convert_to_long_format(df_out, files, measure)
+                df_out.to_csv(output_file, header=False)
+            else:
+                df_out.to_csv(output_file, index_label=files)
+                blank_line.to_csv(output_file, index=False, header=False)
+            
             print files + " is done!"
             
     
@@ -428,8 +443,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                                                         mode=mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
-                df_out.to_csv(output_file, index_label=filename)
-                blank_line.to_csv(output_file, index=False, header=False)
+                if long_format:
+                    df_out = convert_to_long_format(df_out, filename, measure)
+                    df_out.to_csv(output_file, header=False)
+                else:
+                    df_out.to_csv(output_file, index_label=filename)
+                    blank_line.to_csv(output_file, index=False, header=False)
+
                 print filename + " is done!"
             
         elif file_type == ".csv":
@@ -453,13 +473,34 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                                                         mode=mode_type,
                                                         use_real_dist=use_real_dist, 
                                                         real_len=real_len)
-            df_out.to_csv(output_file, index_label=files)
-            blank_line.to_csv(output_file, index=False, header=False)
+            if long_format:
+                df_out = convert_to_long_format(df_out, files, measure)
+                df_out.to_csv(output_file, header=False)
+            else:
+                df_out.to_csv(output_file, index_label=files)
+                blank_line.to_csv(output_file, index=False, header=False)
             print files + " is done!"
             
             
     output_file.close()
     
+def convert_to_long_format(df, filename, measure):
+    """
+    Converts data output to long format to be used for generating figures etc
+    
+    Input: the output dataframe, the filename associated with output 
+    and the measure to be kept
+    
+    Output: dataframe in long-format ready to be written to a csv file
+    """
+    
+    df = df.transpose()
+    df['filename'] = filename
+    df_out = pd.melt(df, id_vars=['filename'], value_vars=[measure])
+    
+    return(df_out)
+
+
 if __name__ == "__main__":
     
     import sys
@@ -469,6 +510,8 @@ if __name__ == "__main__":
     real_len = ["x", 0] #Initizliae whether or not to use real distances for calculations
     fbin=0.5
     ftol=2.0
+    long_format=False
+    measure="distance travelled"
     
     for arg in sys.argv[1:]:
         try:
@@ -496,12 +539,19 @@ if __name__ == "__main__":
         
         elif name.lower() == "--ftolerance" or name.lower() == "--ftol":
             ftol = float(value)
+            
+        elif name.lower() == "--long":
+            long_format = value
+        
+        elif name.lower() == "--measure":
+            measure = value
     
     file_type = files[files.find('.'):].lower()
     
     if file_type.lower() == ".txt" or file_type.lower() == ".csv":
         analyze_file(files, file_type, output, mode, use_real_dist, real_len,
-                     freeze_bin = fbin, freeze_tolerance = ftol)
+                     freeze_bin = fbin, freeze_tolerance = ftol,
+                     long_format=long_format, measure=measure)
     
     else:
         print "Not a supported file type."
