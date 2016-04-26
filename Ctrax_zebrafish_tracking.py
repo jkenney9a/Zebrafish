@@ -13,6 +13,7 @@ Parameters:
 --x= OR --y= the maximum x or y length in the .ann ROI
 --long= whether or not to output data as a long format
 --measure= the measure to use for long format output (default is distance travelled)
+--noisy= whether or not to print out when files are done being analyzed (default = TRUE)
 
 Output:
 CSV file listing the percent time fish spends in different parts of tank divided
@@ -342,7 +343,7 @@ def pixel_to_length(pixel_length, real_length):
     return (float(real_length)/pixel_length)
 
 
-def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
+def analyze_file(files, file_type, output, mode, use_real_dist, real_len, noisy,
                  freeze_bin = 0.5, freeze_tolerance = 2, long_format=False,
                  measure='distance travelled'):
     """
@@ -395,7 +396,8 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                     df_out.to_csv(output_file, index_label=filename)
                     blank_line.to_csv(output_file, index=False, header=False)
                 
-                print filename + " is done!"
+                if noisy == True:
+                    print filename + " is done!"
         
         elif file_type == '.csv':
             df = load_data(files)
@@ -415,7 +417,9 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                 df_out.to_csv(output_file, index_label=files)
                 blank_line.to_csv(output_file, index=False, header=False)
             
-            print files + " is done!"
+            if noisy == True:
+                print files + " is done!"
+
             
     
     elif mode_type == "fps":
@@ -449,8 +453,9 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                 else:
                     df_out.to_csv(output_file, index_label=filename)
                     blank_line.to_csv(output_file, index=False, header=False)
-
-                print filename + " is done!"
+                
+                if noisy == True:
+                    print filename + " is done!"
             
         elif file_type == ".csv":
             df = load_data(files)
@@ -479,7 +484,9 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len,
             else:
                 df_out.to_csv(output_file, index_label=files)
                 blank_line.to_csv(output_file, index=False, header=False)
-            print files + " is done!"
+            
+            if noisy == True:
+                print files + " is done!"
             
             
     output_file.close()
@@ -511,7 +518,8 @@ if __name__ == "__main__":
     fbin=0.5
     ftol=2.0
     long_format=False
-    measure="distance travelled"
+    measure = "distance travelled"
+    noisy = True
     
     for arg in sys.argv[1:]:
         try:
@@ -545,13 +553,16 @@ if __name__ == "__main__":
         
         elif name.lower() == "--measure":
             measure = value
+            
+        elif name.lower() == "--noisy":
+            noisy = value
     
     file_type = files[files.find('.'):].lower()
     
     if file_type.lower() == ".txt" or file_type.lower() == ".csv":
         analyze_file(files, file_type, output, mode, use_real_dist, real_len,
                      freeze_bin = fbin, freeze_tolerance = ftol,
-                     long_format=long_format, measure=measure)
+                     long_format=long_format, measure=measure, noisy=noisy)
     
     else:
         print "Not a supported file type."
