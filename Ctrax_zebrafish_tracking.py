@@ -392,12 +392,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len, noisy,
                 if long_format:
                     df_out = convert_to_long_format(df_out, filename, measure)
                     df_out.to_csv(output_file, header=False)
+                    frames_per_unit_time = df.shape[0]/float(trial_length)
                 else:
                     df_out.to_csv(output_file, index_label=filename)
                     blank_line.to_csv(output_file, index=False, header=False)
                 
                 if noisy == True:
-                    print filename + " is done!"
+                    print filename + " is done!" + " Frames per unit time= " + str(frames_per_unit_time)
         
         elif file_type == '.csv':
             df = load_data(files)
@@ -413,12 +414,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len, noisy,
             if long_format:
                 df_out = convert_to_long_format(df_out, files, measure)
                 df_out.to_csv(output_file, header=False)
+                frames_per_unit_time = df.shape[0]/float(trial_length)
             else:
                 df_out.to_csv(output_file, index_label=files)
                 blank_line.to_csv(output_file, index=False, header=False)
             
             if noisy == True:
-                print files + " is done!"
+                print files + " is done!" + " Frames per unit time= " + str(frames_per_unit_time)
 
             
     
@@ -450,12 +452,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len, noisy,
                 if long_format:
                     df_out = convert_to_long_format(df_out, filename, measure)
                     df_out.to_csv(output_file, header=False)
+                    frames_per_unit_time = df.shape[0]/float(trial_length)
                 else:
                     df_out.to_csv(output_file, index_label=filename)
                     blank_line.to_csv(output_file, index=False, header=False)
                 
                 if noisy == True:
-                    print filename + " is done!"
+                    print filename + " is done!" + " Frames per unit time= " + str(frames_per_unit_time)
             
         elif file_type == ".csv":
             df = load_data(files)
@@ -481,12 +484,13 @@ def analyze_file(files, file_type, output, mode, use_real_dist, real_len, noisy,
             if long_format:
                 df_out = convert_to_long_format(df_out, files, measure)
                 df_out.to_csv(output_file, header=False)
+                frames_per_unit_time = df.shape[0]/float(trial_length)
             else:
                 df_out.to_csv(output_file, index_label=files)
                 blank_line.to_csv(output_file, index=False, header=False)
             
             if noisy == True:
-                print files + " is done!"
+                print files + " is done!" +  "Frames per unit time= " + str(frames_per_unit_time)
             
             
     output_file.close()
